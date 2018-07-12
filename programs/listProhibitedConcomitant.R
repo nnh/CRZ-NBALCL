@@ -31,13 +31,22 @@ output_path <- paste0(parent_path, "/output")
 if (file.exists(output_path) == F) {
   dir.create(output_path)
 }
-# read rawfile ------
+# load input files ------
 # 併用禁止薬リスト取り込み
-ProhibitedConcomitant <- read.csv(input_file_path, as.is=T,
-                                  fileEncoding="CP932", stringsAsFactors=F,
-                                  header=F)
-# 前後の空白除去、大文字に変換
-
+input_ProhibitedConcomitant <- readLines(con=input_file_path, encoding="CP932")
+for  (i in 1:length(input_ProhibitedConcomitant)) {
+  # カンマで切り分けて前後の空白除去、大文字に変換
+  temp_input <- unlist(strsplit(input_ProhibitedConcomitant[i], ","))
+  for (j in 1:length(temp_input)) {
+    temp_input[j] <- gsub("^[ ]+|[ ]+$", "", temp_input[j])
+    temp_input[j] <- toupper(temp_input[j])
+    if (!exists("ProhibitedConcomitant")) {
+      ProhibitedConcomitant <- temp_input[j]
+    } else {
+      ProhibitedConcomitant <- append(ProhibitedConcomitant, temp_input[j])
+    }
+  }
+}
 # 日本語ファイル取り込み
 rawdata_idf_japanese <- read.csv(idf_japanese_file_path, as.is=T,
                                  fileEncoding="CP932", stringsAsFactors=F,
@@ -61,12 +70,15 @@ idf_english <- rawdata_idf_english[ , c("薬剤コード", "英名")]
 idf_english <- subset(idf_english, 英名!="")
 # 薬剤コードで日本語ファイルと英名ファイルをマージ
 idf <- merge(idf_japanese, idf_english, by="薬剤コード", all.x=T)
-#  ------
+# edit data ------
 # 一般名：薬剤コードが7桁のレコードを抽出
-idf_generic_name <- subset(rawdata_idf_japanese,
-                           sapply(rawdata_idf_japanese[ ,"薬剤コード"], nchar) == 7)
-# 商品名：一般名以外のレコードを抽出し、一般名コードをセット
-idf_product_name <- subset(rawdata_idf_japanese,
-                           !(rawdata_idf_japanese[ ,"薬剤コード"]
+idf_generic_name <- subset(idf,
+                           sapply(idf[ ,"薬剤コード"], nchar) == 7)
+# 商品名：一般名以外のレコードを抽出
+idf_product_name <- subset(idf,
+                           !(idf[ ,"薬剤コード"]
                              %in% idf_generic_name[ ,"薬剤コード"]))
 # 英名で併用禁忌薬を検索
+generic_list <- subset(idf_generic_name,
+                        (idf_generic_name[ ,"英名"]
+                         %in% ProhibitedConcomitant))
