@@ -34,16 +34,23 @@ if (file.exists(output_path) == F) {
 # load input files ------
 # 併用禁止薬リスト取り込み
 input_ProhibitedConcomitant <- readLines(con=input_file_path, encoding="CP932")
+if (exists("ProhibitedConcomitant")) {
+  rm(ProhibitedConcomitant)
+}
 for  (i in 1:length(input_ProhibitedConcomitant)) {
-  # カンマで切り分けて前後の空白除去、大文字に変換
-  temp_input <- unlist(strsplit(input_ProhibitedConcomitant[i], ","))
-  for (j in 1:length(temp_input)) {
-    temp_input[j] <- gsub("^[ ]+|[ ]+$", "", temp_input[j])
-    temp_input[j] <- toupper(temp_input[j])
-    if (!exists("ProhibitedConcomitant")) {
-      ProhibitedConcomitant <- temp_input[j]
-    } else {
-      ProhibitedConcomitant <- append(ProhibitedConcomitant, temp_input[j])
+  # "#"で始まる行はコメントとして読み飛ばす。#の前の空白は許容しない
+  if ((substring(input_ProhibitedConcomitant[i], 1, 1) != "#")
+      && (input_ProhibitedConcomitant[i] != "")) {
+    # カンマで切り分けて前後の空白除去、大文字に変換
+    temp_input <- unlist(strsplit(input_ProhibitedConcomitant[i], ","))
+    for (j in 1:length(temp_input)) {
+      temp_input[j] <- gsub("^[ ]+|[ ]+$", "", temp_input[j])
+      temp_input[j] <- toupper(temp_input[j])
+      if (!exists("ProhibitedConcomitant")) {
+        ProhibitedConcomitant <- temp_input[j]
+      } else {
+        ProhibitedConcomitant <- append(ProhibitedConcomitant, temp_input[j])
+      }
     }
   }
 }
@@ -79,6 +86,8 @@ idf_product_name <- subset(idf,
                            !(idf[ ,"薬剤コード"]
                              %in% idf_generic_name[ ,"薬剤コード"]))
 # 英名で併用禁忌薬を検索
-generic_list <- subset(idf_generic_name,
+  generic_list <- subset(idf_generic_name,
                         (idf_generic_name[ ,"英名"]
                          %in% ProhibitedConcomitant))
+# 薬品コードの上n桁で併用禁忌薬を検索
+# 一般名で併用禁忌薬を検索
